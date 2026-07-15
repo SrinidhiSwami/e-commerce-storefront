@@ -75,7 +75,7 @@
 
       const listOptions = Object.values(wishlists)
         .map(l => `<option value="${l.id}" ${l.id === activeId ? 'selected' : ''}>${l.name}</option>`)
-        .join('');
+        .join('') + `<option value="__new__">+ Create new list…</option>`;
 
       const alreadySaved = isInWishlist(product.id, activeId);
 
@@ -136,6 +136,30 @@
       });
 
       picker.addEventListener('change', () => {
+        if(picker.value === '__new__'){
+          const name = prompt('Name your new wishlist:', '');
+          if(!name || !name.trim()){
+            // user cancelled — fall back to the active list
+            picker.value = getActiveWishlistId();
+            return;
+          }
+          const newId = createWishlist(name.trim());
+          setActiveWishlistId(newId);
+
+          // insert the new option in place of "+ Create new list…" and re-add that option after it
+          const newOpt = document.createElement('option');
+          newOpt.value = newId;
+          newOpt.textContent = name.trim();
+          picker.insertBefore(newOpt, picker.querySelector('option[value="__new__"]'));
+          picker.value = newId;
+
+          // immediately save the product there too, since that was the point of creating it
+          toggleWishlistItem(product.id, newId);
+          refreshWishBtn();
+          showToast(`Created "${name.trim()}" and added "${product.name}"`);
+          return;
+        }
+
         setActiveWishlistId(picker.value);
         refreshWishBtn();
       });
