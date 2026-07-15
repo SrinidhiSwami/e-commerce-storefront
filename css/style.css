@@ -645,7 +645,13 @@ h1,h2,h3{
 .list-tabs{
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 6px;
+  max-width: 100%;
+  scroll-behavior: smooth;
 }
 .list-tab{
   padding: 10px 18px;
