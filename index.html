@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketBee — Everyday finds, delivered</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="home">
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="logo"><span>MB</span> MarketBee</a>
+      <nav class="main-nav">
+        <a href="search.html" class="nav-link" data-page="search">Search</a>
+        <a href="wishlist.html" class="nav-link" data-page="wishlist">
+          Wishlist <span class="badge" data-wish-badge style="display:none">0</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap hero-inner">
+      <span class="eyebrow">General marketplace</span>
+      <h1>Everyday finds, curated at speed.</h1>
+      <p>From desk gear to travel gear — browse a hand-picked catalog, save what catches your eye, and merge your lists whenever two wishlists need to become one.</p>
+      <form class="hero-search" id="hero-search-form">
+        <input type="text" placeholder="Search headphones, mugs, backpacks…" aria-label="Search products">
+        <button type="submit">Search</button>
+      </form>
+    </div>
+  </section>
+
+  <main class="wrap section">
+    <div class="section-head">
+      <div>
+        <h2>Best sellers</h2>
+        <div class="sub">The most wishlisted items on MarketBee this week.</div>
+      </div>
+    </div>
+    <div class="product-grid" id="bestseller-grid" aria-live="polite"></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">MarketBee is a demo storefront. All products and reviews are fictional.</div>
+  </footer>
+
+  <script src="js/store.js"></script>
+  <script src="js/product-card.js"></script>
+  <script>
+    initHeader('home');
+
+    async function loadBestSellers(){
+      const grid = document.getElementById('bestseller-grid');
+      try{
+        const products = await fetchProducts();
+        const best = products.filter(p => p.bestseller);
+        best.forEach(p => grid.appendChild(renderProductCard(p)));
+      }catch(err){
+        grid.innerHTML = `<div class="empty-state"><div class="glyph">⚠</div><h3>Couldn't load products</h3><p>${err.message}</p></div>`;
+      }
+    }
+    loadBestSellers();
+
+    document.getElementById('hero-search-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const q = e.target.querySelector('input').value.trim();
+      window.location.href = `search.html${q ? '?q=' + encodeURIComponent(q) : ''}`;
+    });
+  </script>
+</body>
+</html>

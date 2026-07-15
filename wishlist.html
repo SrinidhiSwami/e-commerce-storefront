@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wishlist — MarketBee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="wishlist">
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="logo"><span>MB</span> MarketBee</a>
+      <nav class="main-nav">
+        <a href="index.html" class="nav-link" data-page="home">Home</a>
+        <a href="search.html" class="nav-link" data-page="search">Search</a>
+        <a href="wishlist.html" class="nav-link" data-page="wishlist">
+          Wishlist <span class="badge" data-wish-badge style="display:none">0</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap section">
+    <div class="wishlist-header">
+      <div class="list-tabs" id="list-tabs"></div>
+      <form class="new-list-form" id="new-list-form">
+        <input type="text" id="new-list-name" placeholder="New list name…" required>
+        <button type="submit" class="btn btn-outline">+ Create list</button>
+      </form>
+    </div>
+
+    <div id="delete-row" style="margin-bottom:20px;"></div>
+
+    <div class="product-grid" id="wishlist-grid"></div>
+
+    <div class="merge-panel" id="merge-panel" style="display:none;">
+      <h3>Merge two lists</h3>
+      <div class="sub">Combine any two wishlists into one. Items saved in both are kept once, using the earliest date added.</div>
+
+      <div class="merge-pickers">
+        <select id="merge-a"></select>
+        <div class="merge-glyph">＋</div>
+        <select id="merge-b"></select>
+      </div>
+
+      <div class="merge-preview" id="merge-preview"></div>
+
+      <div class="merge-options">
+        <label><input type="radio" name="merge-mode" value="new" checked> Save as a new list</label>
+        <input type="text" id="new-merge-name" placeholder="Merged list name" value="Merged Wishlist">
+        <label><input type="radio" name="merge-mode" value="overwriteA"> Overwrite list A</label>
+        <label><input type="radio" name="merge-mode" value="overwriteB"> Overwrite list B</label>
+      </div>
+
+      <button class="btn btn-primary" id="confirm-merge">Merge lists</button>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">MarketBee is a demo storefront. All products and reviews are fictional.</div>
+  </footer>
+
+  <script src="js/store.js"></script>
+  <script src="js/product-card.js"></script>
+  <script>
+    initHeader('wishlist');
+
+    let products = [];
+
+    function productById(id){ return products.find(p => p.id === id); }
+
+    function renderTabs(){
+      const lists = getWishlists();
+      const activeId = getActiveWishlistId();
+      const tabs = document.getElementById('list-tabs');
+      tabs.innerHTML = '';
+
+      Object.values(lists)
+        .sort((a,b) => a.createdAt - b.createdAt)
+        .forEach(list => {
+          const tab = document.createElement('button');
+          tab.className = `list-tab ${list.id === activeId ? 'active' : ''}`;
+          tab.innerHTML = `${list.name} <span class="count">${list.items.length}</span>`;
+          tab.addEventListener('click', () => {
+            setActiveWishlistId(list.id);
+            renderAll();
+          });
+          tabs.appendChild(tab);
+        });
+    }
+
+    function renderDeleteRow(){
+      const lists = getWishlists();
+      const activeId = getActiveWishlistId();
+      const row = document.getElementById('delete-row');
+      row.innerHTML = '';
+      if(Object.keys(lists).length <= 1) return;
+
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-danger';
+      btn.textContent = `Delete "${lists[activeId].name}"`;
+      btn.addEventListener('click', () => {
+        if(confirm(`Delete "${lists[activeId].name}"? This can't be undone.`)){
+          deleteWishlist(activeId);
+          renderAll();
+        }
+      });
+      row.appendChild(btn);
+    }
+
+    function renderGrid(){
+      const lists = getWishlists();
+      const activeId = getActiveWishlistId();
+      const list = lists[activeId];
+      const grid = document.getElementById('wishlist-grid');
+      grid.innerHTML = '';
+
+      if(!list.items.length){
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1;">
+            <div class="glyph">🤍</div>
+            <h3>"${list.name}" is empty</h3>
+            <p><a href="search.html">Browse products</a> and tap the heart to save something here.</p>
+          </div>`;
+        return;
+      }
+
+      list.items
+        .slice()
+        .sort((a,b) => b.addedAt - a.addedAt)
+        .forEach(item => {
+          const product = productById(item.productId);
+          if(!product) return;
+          const card = renderProductCard(product, {
+            listId: activeId,
+            onChange: renderAll
+          });
+          grid.appendChild(card);
+        });
+    }
+
+    function renderMergePanel(){
+      const lists = getWishlists();
+      const listArr = Object.values(lists).sort((a,b) => a.createdAt - b.createdAt);
+      const panel = document.getElementById('merge-panel');
+
+      if(listArr.length < 2){
+        panel.style.display = 'none';
+        return;
+      }
+      panel.style.display = 'block';
+
+      const selA = document.getElementById('merge-a');
+      const selB = document.getElementById('merge-b');
+      const prevA = selA.value, prevB = selB.value;
+
+      const optionsHtml = listArr.map(l => `<option value="${l.id}">${l.name} (${l.items.length})</option>`).join('');
+      selA.innerHTML = optionsHtml;
+      selB.innerHTML = optionsHtml;
+
+      selA.value = prevA && listArr.some(l=>l.id===prevA) ? prevA : listArr[0].id;
+      selB.value = prevB && listArr.some(l=>l.id===prevB) && prevB !== selA.value
+        ? prevB
+        : (listArr.find(l => l.id !== selA.value)?.id || listArr[0].id);
+
+      renderMergePreview();
+    }
+
+    function renderMergePreview(){
+      const selA = document.getElementById('merge-a');
+      const selB = document.getElementById('merge-b');
+      const preview = document.getElementById('merge-preview');
+
+      if(selA.value === selB.value){
+        preview.innerHTML = `<div style="color:var(--text-dim); font-size:0.88rem;">Choose two different lists to preview the merge.</div>`;
+        return;
+      }
+
+      const { merged, dupeIds } = computeMergePreview(selA.value, selB.value);
+
+      if(!merged.length){
+        preview.innerHTML = `<div style="color:var(--text-dim); font-size:0.88rem;">Both lists are empty — nothing to merge yet.</div>`;
+        return;
+      }
+
+      preview.innerHTML = merged
+        .sort((a,b) => a.addedAt - b.addedAt)
+        .map(item => {
+          const product = productById(item.productId);
+          if(!product) return '';
+          const isDupe = dupeIds.has(item.productId);
+          return `
+            <div class="merge-preview-item">
+              <img src="${product.image}" alt="${product.alt}">
+              <span>${product.name}</span>
+              ${isDupe ? '<span class="dupe-tag">in both lists</span>' : ''}
+            </div>`;
+        }).join('');
+    }
+
+    function renderAll(){
+      renderTabs();
+      renderDeleteRow();
+      renderGrid();
+      renderMergePanel();
+      initHeader('wishlist');
+    }
+
+    async function init(){
+      products = await fetchProducts();
+      renderAll();
+
+      document.getElementById('new-list-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('new-list-name');
+        const name = input.value.trim();
+        if(!name) return;
+        const id = createWishlist(name);
+        setActiveWishlistId(id);
+        input.value = '';
+        renderAll();
+        showToast(`Created "${name}"`);
+      });
+
+      document.getElementById('merge-a').addEventListener('change', renderMergePreview);
+      document.getElementById('merge-b').addEventListener('change', renderMergePreview);
+
+      document.getElementById('confirm-merge').addEventListener('click', () => {
+        const listIdA = document.getElementById('merge-a').value;
+        const listIdB = document.getElementById('merge-b').value;
+
+        if(listIdA === listIdB){
+          showToast('Pick two different lists to merge', 'error');
+          return;
+        }
+
+        const mode = document.querySelector('input[name="merge-mode"]:checked').value;
+        const newListName = document.getElementById('new-merge-name').value.trim() || 'Merged Wishlist';
+        const { merged } = computeMergePreview(listIdA, listIdB);
+
+        const resultId = commitMerge({ listIdA, listIdB, mergedItems: merged, mode, newListName });
+        setActiveWishlistId(resultId);
+        renderAll();
+        showToast(`Merged into "${getWishlists()[resultId].name}" — ${merged.length} item${merged.length === 1 ? '' : 's'}`);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

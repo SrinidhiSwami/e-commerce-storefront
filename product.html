@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product — MarketBee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="product">
+
+  <header class="site-header">
+    <div class="wrap">
+      <a href="index.html" class="logo"><span>MB</span> MarketBee</a>
+      <nav class="main-nav">
+        <a href="index.html" class="nav-link" data-page="home">Home</a>
+        <a href="search.html" class="nav-link" data-page="search">Search</a>
+        <a href="wishlist.html" class="nav-link" data-page="wishlist">
+          Wishlist <span class="badge" data-wish-badge style="display:none">0</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap" id="detail-root">
+    <div class="empty-state"><div class="glyph">⏳</div><h3>Loading product…</h3></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">MarketBee is a demo storefront. All products and reviews are fictional.</div>
+  </footer>
+
+  <script src="js/store.js"></script>
+  <script>
+    initHeader('product');
+
+    function starButtonsMarkup(current){
+      let out = '';
+      for(let i = 1; i <= 5; i++){
+        out += `<button type="button" data-value="${i}" class="${i <= current ? 'on' : ''}" aria-label="Rate ${i} star">★</button>`;
+      }
+      return out;
+    }
+
+    async function render(){
+      const root = document.getElementById('detail-root');
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+
+      let product;
+      try{
+        product = id ? await getProductById(id) : null;
+      }catch(err){
+        root.innerHTML = `<div class="empty-state"><div class="glyph">⚠</div><h3>Couldn't load product</h3><p>${err.message}</p></div>`;
+        return;
+      }
+
+      if(!product){
+        root.innerHTML = `
+          <div class="empty-state">
+            <div class="glyph">🕳️</div>
+            <h3>We couldn't find that product</h3>
+            <p>It may have been removed. <a href="search.html">Browse the catalog</a> instead.</p>
+          </div>`;
+        return;
+      }
+
+      document.title = `${product.name} — MarketBee`;
+
+      const rating = blendedRating(product);
+      const userR = getUserRating(product.id);
+      const wishlists = getWishlists();
+      const activeId = getActiveWishlistId();
+
+      const listOptions = Object.values(wishlists)
+        .map(l => `<option value="${l.id}" ${l.id === activeId ? 'selected' : ''}>${l.name}</option>`)
+        .join('');
+
+      const alreadySaved = isInWishlist(product.id, activeId);
+
+      root.innerHTML = `
+        <div class="product-detail">
+          <div class="detail-media">
+            <img src="${product.image}" alt="${product.alt}">
+          </div>
+          <div class="detail-info">
+            <span class="detail-category">${product.category}</span>
+            <h1 class="detail-title">${product.name}</h1>
+            <div class="detail-price">$${product.price.toFixed(2)}</div>
+
+            <div class="rating-block">
+              <span class="stars" style="font-size:1.2rem;">${starString(rating.avg)}</span>
+              <div>
+                <div class="avg">${rating.avg.toFixed(1)} / 5</div>
+                <div class="count">${rating.count} ratings</div>
+              </div>
+            </div>
+
+            <p class="detail-desc">${product.description}</p>
+
+            <div class="rate-this">
+              <p>Rate this product ${userR ? `<span class="your-rating-tag">★ Your rating: ${userR}/5</span>` : `<span class="your-rating-tag">★ Your rating — personal, stored on this device only</span>`}</p>
+              <div class="star-input" id="star-input">${starButtonsMarkup(userR)}</div>
+            </div>
+
+            <div class="wishlist-select">
+              <label for="wishlist-picker" style="font-size:0.85rem; font-weight:600; color:var(--text-dim); display:block; margin-bottom:6px;">Save to</label>
+              <select id="wishlist-picker">${listOptions}</select>
+            </div>
+
+            <div class="detail-actions">
+              <button class="btn btn-primary" id="wish-btn">
+                ${alreadySaved ? '♥ Saved to wishlist' : '♡ Add to wishlist'}
+              </button>
+              <a href="search.html" class="btn btn-ghost">← Keep browsing</a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // wishlist add/remove
+      const wishBtn = document.getElementById('wish-btn');
+      const picker = document.getElementById('wishlist-picker');
+
+      function refreshWishBtn(){
+        const saved = isInWishlist(product.id, picker.value);
+        wishBtn.textContent = saved ? '♥ Saved to wishlist' : '♡ Add to wishlist';
+      }
+
+      wishBtn.addEventListener('click', () => {
+        const added = toggleWishlistItem(product.id, picker.value);
+        refreshWishBtn();
+        showToast(added ? `Added "${product.name}" to wishlist` : `Removed "${product.name}" from wishlist`);
+        initHeader('product');
+      });
+
+      picker.addEventListener('change', () => {
+        setActiveWishlistId(picker.value);
+        refreshWishBtn();
+      });
+
+      // star rating input
+      document.getElementById('star-input').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-value]');
+        if(!btn) return;
+        const value = Number(btn.dataset.value);
+        setUserRating(product.id, value);
+        showToast(`Thanks! You rated this ${value}/5`);
+        render(); // re-render to reflect new blended average + tag
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
