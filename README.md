@@ -4,6 +4,7 @@ A dependency-free HTML/CSS/JS storefront with a multi-list wishlist feature (inc
 
 ## Run locally
 Just open `index.html` in a browser, or serve the folder so `fetch()` can load `data/products.json`:
+To visit hosted site click on https://srinidhiswami.github.io/e-commerce-storefront/
 
 ```bash
 python3 -m http.server 8000
