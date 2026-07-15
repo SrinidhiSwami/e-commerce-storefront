@@ -36,6 +36,11 @@
 
     <div class="product-grid" id="wishlist-grid"></div>
 
+    <div class="merge-trigger-row">
+      <button class="btn btn-outline" id="merge-trigger-btn">⇄ Merge lists</button>
+      <span class="merge-status" id="merge-status"></span>
+    </div>
+
     <div class="merge-panel" id="merge-panel" style="display:none;">
       <h3>Merge two lists</h3>
       <div class="sub">Combine any two wishlists into one. Items saved in both are kept once, using the earliest date added.</div>
@@ -142,16 +147,38 @@
         });
     }
 
-    function renderMergePanel(){
+    function refreshMergeUiState(){
+      // Always-visible status line so the requirement is explicit, not just on click.
       const lists = getWishlists();
-      const listArr = Object.values(lists).sort((a,b) => a.createdAt - b.createdAt);
+      const listArr = Object.values(lists);
       const panel = document.getElementById('merge-panel');
+      const status = document.getElementById('merge-status');
+      const trigger = document.getElementById('merge-trigger-btn');
 
       if(listArr.length < 2){
         panel.style.display = 'none';
-        return;
+        status.textContent = 'Create 2 lists to merge — you currently have ' + listArr.length + '.';
+        trigger.disabled = true;
+      } else {
+        status.textContent = `${listArr.length} lists ready — click to merge any two.`;
+        trigger.disabled = false;
       }
+    }
+
+    function openMergeUi(){
+      const lists = getWishlists();
+      const listArr = Object.values(lists);
+      if(listArr.length < 2) return; // button is disabled in this case anyway
+
+      const panel = document.getElementById('merge-panel');
       panel.style.display = 'block';
+      renderMergePanel();
+      panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function renderMergePanel(){
+      const lists = getWishlists();
+      const listArr = Object.values(lists).sort((a,b) => a.createdAt - b.createdAt);
 
       const selA = document.getElementById('merge-a');
       const selB = document.getElementById('merge-b');
@@ -205,7 +232,7 @@
       renderTabs();
       renderDeleteRow();
       renderGrid();
-      renderMergePanel();
+      refreshMergeUiState();
       initHeader('wishlist');
     }
 
@@ -225,6 +252,8 @@
         showToast(`Created "${name}"`);
       });
 
+      document.getElementById('merge-trigger-btn').addEventListener('click', openMergeUi);
+
       document.getElementById('merge-a').addEventListener('change', renderMergePreview);
       document.getElementById('merge-b').addEventListener('change', renderMergePreview);
 
@@ -243,6 +272,7 @@
 
         const resultId = commitMerge({ listIdA, listIdB, mergedItems: merged, mode, newListName });
         setActiveWishlistId(resultId);
+        document.getElementById('merge-panel').style.display = 'none';
         renderAll();
         showToast(`Merged into "${getWishlists()[resultId].name}" — ${merged.length} item${merged.length === 1 ? '' : 's'}`);
       });
