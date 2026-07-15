@@ -708,6 +708,7 @@ h1,h2,h3{
   position: relative;
   left: 10%;
   margin: 8px;
+  margin-bottom: 25px;
 }
 
 .merge-note{
